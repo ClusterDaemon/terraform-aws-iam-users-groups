@@ -1,6 +1,6 @@
 # vim: tabstop=2 shiftwidth=2 expandtab
 locals {
-  users = var.users != tolist([]) ? { for user in var.users : user.name => user } : {}
+  users  = var.users != tolist([]) ? { for user in var.users : user.name => user } : {}
   groups = var.groups != tolist([]) ? { for group in var.groups : group.name => group } : {}
 }
 
@@ -14,13 +14,13 @@ resource "aws_iam_user" "this" {
 resource "aws_iam_user_policy_attachment" "this" {
   for_each = {
     for attachment in [
-      for user in local.users : setproduct([ user.name ], user.policy_arns)
-    ] : format("%s-%s", attachment[0], attachment[1]) => {
+      for user in local.users : setproduct([user.name], user.policy_arns)
+      ] : format("%s-%s", attachment[0], attachment[1]) => {
       user       = attachment[0]
       policy_arn = attachment[1]
     }
   }
-  
+
   user       = each.value.group
   policy_arn = each.value.policy_arn
 }
@@ -50,9 +50,9 @@ resource "aws_iam_user_login_profile" "this" {
 resource "aws_iam_access_key" "this" {
   for_each = {
     for keys in [
-      for name, attributes in local.users : setproduct([ name ], lookup(attributes, "access_keys", []))
-    ] : format("%s-%s", keys[0], keys[1]) => {
-      name = keys[0]
+      for name, attributes in local.users : setproduct([name], lookup(attributes, "access_keys", []))
+      ] : format("%s-%s", keys[0], keys[1]) => {
+      name   = keys[0]
       status = keys[1]
     }
   }

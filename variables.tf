@@ -29,7 +29,7 @@ variable "users" {
       generate_password       = bool
       password_length         = optional(number, 20)
       password_reset_required = optional(bool, false)
-    }), {
+      }), {
       generate_password = false
     })
 
@@ -38,10 +38,10 @@ variable "users" {
       status = optional(string, "Active")
     })))
 
-    enable_mfa               = optional(bool, false)
-    policy_arns              = optional(list(string), [])
-    policy                   = optional(string)
-    pgp_public_key           = string
+    enable_mfa     = optional(bool, false)
+    policy_arns    = optional(list(string), [])
+    policy         = optional(string)
+    pgp_public_key = string
   }))
 
   validation {
@@ -57,7 +57,7 @@ variable "users" {
   }
 
   validation {
-    condition = alltrue([ 
+    condition = alltrue([
       for key_status in flatten(var.users[*].access_keys[*].status) : regexall("^(Active|Inactive)$", key_status) > 0
     ])
 

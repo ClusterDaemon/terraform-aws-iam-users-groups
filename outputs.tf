@@ -1,15 +1,15 @@
 output "groups" {
   description = "All IAM groups managed by this module."
 
-  value = [ for name, attributes in local.groups : {
+  value = [for name, attributes in local.groups : {
     name      = aws_iam_group.this[name].name
     path      = aws_iam_group.this[name].path
     arn       = aws_iam_group.this[name].arn
     unique_id = aws_iam_group.this[name].unique_id
 
     policy_arns = concat(
-      [ for arn in attributes.policy_arns : aws_iam_group_policy_attachment.this[format("%s-%s", name, arn)].name ],
-      attributes.policy != "" ? [ aws_iam_group_policy.this[name].arn ] : tolist([])
+      [for arn in attributes.policy_arns : aws_iam_group_policy_attachment.this[format("%s-%s", name, arn)].name],
+      attributes.policy != "" ? [aws_iam_group_policy.this[name].arn] : tolist([])
     )
   }]
 
@@ -18,7 +18,7 @@ output "groups" {
 output "users" {
   description = "All IAM users managed by this module."
 
-  value = [ for name, attributes in local.users : {
+  value = [for name, attributes in local.users : {
     name      = aws_iam_user.this[name].name
     path      = aws_iam_user.this[name].path
     arn       = aws_iam_user.this[name].arn
@@ -26,10 +26,10 @@ output "users" {
     groups    = attributes.groups != tolist([]) ? aws_iam_user_group_membership.this[name].name : null
 
     policy_arns = concat(
-      [ for arn in attributes.policy_arns : aws_iam_group_policy_attachment.this[format("%s-%s", name, arn)].name ],
-      attributes.policy != "" ? [ aws_iam_group_policy.this[name].arn ] : tolist([])
+      [for arn in attributes.policy_arns : aws_iam_group_policy_attachment.this[format("%s-%s", name, arn)].name],
+      attributes.policy != "" ? [aws_iam_group_policy.this[name].arn] : tolist([])
     )
-    
+
     console_password = (
       attributes.console_password.generate_password ?
       {

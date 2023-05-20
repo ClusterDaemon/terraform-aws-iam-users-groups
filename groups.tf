@@ -11,12 +11,12 @@ resource "aws_iam_user_group_membership" "this" {
     for name, attributes in local.users : name => attributes if attributes.groups == tolist([])
   }
 
-  user   = aws_iam_user.this[each.key].name
+  user = aws_iam_user.this[each.key].name
 
   # If the requested group has been defined in this module, create an implicit dependency.
   groups = [
     for group in each.value.groups : (
-      contains(keys(aws_iam_group.this), group) ? 
+      contains(keys(aws_iam_group.this), group) ?
       aws_iam_group.this[group].name :
       group
     )
@@ -27,13 +27,13 @@ resource "aws_iam_user_group_membership" "this" {
 resource "aws_iam_group_policy_attachment" "this" {
   for_each = {
     for attachment in [
-      for group in local.groups : setproduct([ group.name ], group.policy_arns)
-    ] : format("%s-%s", attachment[0], attachment[1]) => {
+      for group in local.groups : setproduct([group.name], group.policy_arns)
+      ] : format("%s-%s", attachment[0], attachment[1]) => {
       group      = attachment[0]
       policy_arn = attachment[1]
     }
   }
-  
+
   group      = each.value.group
   policy_arn = each.value.policy_arn
 }
