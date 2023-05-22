@@ -18,6 +18,11 @@ This module handles various resources related to user access, and provides that 
   - QR code and URL provided via output
 - Strict input variable schema and validation checking/feedback
 
+## Roadmap
+
+- Better MFA PNG output handling
+- Strict/opnionated password, key, and MFA policies
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -50,14 +55,13 @@ No modules.
 | [aws_iam_user_policy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy) | resource |
 | [aws_iam_user_policy_attachment.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy_attachment) | resource |
 | [aws_iam_virtual_mfa_device.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_virtual_mfa_device) | resource |
-| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_groups"></a> [groups](#input\_groups) | Controls the existence of groups, in addition to handling policy. Some groups are built-in, and will show via output<br>    along with provided groups. | <pre>list(object({<br>    name        = string<br>    path        = optional(string, "/")<br>    policy_arns = optional(list(string), [])<br>    policy      = optional(string)<br>  }))</pre> | `[]` | no |
-| <a name="input_users"></a> [users](#input\_users) | Controls the existence of users in addition to handling access and policy. Some users are built-in, and will show<br>    via output along with provided users. | <pre>list(object({<br>    name   = string<br>    path   = optional(string, "/")<br>    groups = optional(list(string), [])<br><br>    console_password = optional(object({<br>      generate_password       = bool<br>      password_length         = optional(number, 20)<br>      password_reset_required = optional(bool, false)<br>      }), {<br>      generate_password = false<br>    })<br><br>    access_keys = optional(list(object({<br>      name   = string<br>      status = optional(string, "Active")<br>    })))<br><br>    enable_mfa     = optional(bool, false)<br>    policy_arns    = optional(list(string), [])<br>    policy         = optional(string)<br>    pgp_public_key = string<br>  }))</pre> | `[]` | no |
+| <a name="input_groups"></a> [groups](#input\_groups) | Controls the existence of groups, in addition to handling policy. Some groups are built-in, and will show via output<br>    along with provided groups. | <pre>list(object({<br>    name        = string<br>    path        = optional(string, "/")<br>    policy_arns = optional(list(string), [])<br>    policy      = optional(string, "")<br>  }))</pre> | `[]` | no |
+| <a name="input_users"></a> [users](#input\_users) | Controls the existence of users in addition to handling access and policy. Some users are built-in, and will show<br>    via output along with provided users. | <pre>list(object({<br>    name           = string<br>    pgp_public_key = string<br>    path           = optional(string, "/")<br>    groups         = optional(list(string), [])<br>    enable_mfa     = optional(bool, false)<br>    policy_arns    = optional(list(string), [])<br>    policy         = optional(string, "")<br><br>    console_password = optional(object({<br>      generate_password       = bool<br>      password_length         = optional(number, 20)<br>      password_reset_required = optional(bool, false)<br>      }), {<br>      generate_password = false<br>    })<br><br>    access_keys = optional(list(object({<br>      name   = string<br>      status = optional(string, "Active")<br>    })),<br>      []<br>    )<br><br>  }))</pre> | `[]` | no |
 
 ## Outputs
 
@@ -69,4 +73,4 @@ No modules.
 
 ## Generating Documentation
 
-Just execute `$ terraform-docs markdown --output-mode injectb --output-file README.md ./`.
+Just execute `$ terraform-docs markdown --output-mode inject --output-file README.md ./`.
