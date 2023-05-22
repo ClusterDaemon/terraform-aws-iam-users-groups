@@ -26,27 +26,49 @@ resource "aws_iam_user" "this" {
   path = each.value.path
 }
 
-resource "aws_iam_user_policy_attachment" "this" {
+resource "aws_iam_user_group_membership" "this" {
   for_each = {
-    for attachment in [
-      for user in local.users : setproduct([user.name], user.policy_arns)
-      ] : format("%s-%s", attachment[0], attachment[1]) => {
-      user       = attachment[0]
-      policy_arn = attachment[1]
-    }
+    for name, attributes in local.users : name => attributes
+    if attributes.groups != tolist([])
   }
 
-  user       = each.value.group
+  user = aws_iam_user.this[each.key].name
+
+  # If the requested group has been defined in this module, create an implicit dependency.
+  groups = [
+    for group in each.value.groups : (
+      contains(keys(local.groups), group) ?
+      aws_iam_group.this[group].name :
+      group
+    )
+  ]
+
+}
+
+resource "aws_iam_user_policy_attachment" "this" {
+  for_each = {
+    for attachment in concat([
+      for user in local.users : setproduct([user.name], user.policy_arns)
+    ]... ) : format("%s-%s", attachment[0], attachment[1]) => {
+      user       = attachment[0]
+      policy_arn = attachment[1]
+    } 
+  }
+
+  user       = each.value.user
   policy_arn = each.value.policy_arn
 }
 
 resource "aws_iam_user_policy" "this" {
-  for_each = { for name, attributes in local.users : name => attributes if contains(keys(attributes), "policy") }
+  for_each = {
+    for name, attributes in local.users : name => attributes
+    if attributes.policy != ""
+  }
 
   name = each.value.name
   user = each.value.name
 
-  policy = jsonencode(each.value.policy)
+  policy = each.value.policy
 }
 
 resource "aws_iam_user_login_profile" "this" {
@@ -64,21 +86,20 @@ resource "aws_iam_user_login_profile" "this" {
 
 resource "aws_iam_access_key" "this" {
   for_each = {
-    for keys in [
-      for name, attributes in local.users : setproduct([name], lookup(attributes, "access_keys", []))
-      ] : format("%s-%s", keys[0], keys[1]) => {
-      name   = keys[0]
-      status = keys[1]
+    for keys in concat([
+      for name, attributes in local.users : setproduct(
+        [name],
+        [ for key in attributes.access_keys : merge(key, { pgp_key = attributes.pgp_public_key }) ]
+      )
+    ]...) : format("%s-%s", keys[0], keys[1].name) => {
+      name    = keys[0]
+      status  = keys[1].status
+      pgp_key = keys[1].pgp_key
     }
   }
 
-  user = each.value.name
-
-  pgp_key = each.value.pgp_public_key
-
-  lifecycle {
-    create_before_destroy = true
-  }
+  user    = each.value.name
+  pgp_key = each.value.pgp_key
 }
 
 resource "aws_iam_virtual_mfa_device" "this" {
@@ -101,29 +122,10 @@ resource "aws_iam_group" "this" {
   path = each.value.path
 }
 
-resource "aws_iam_user_group_membership" "this" {
-  for_each = {
-    for name, attributes in local.users : name => attributes if attributes.groups == tolist([])
-  }
-
-  user = aws_iam_user.this[each.key].name
-
-  # If the requested group has been defined in this module, create an implicit dependency.
-  groups = [
-    for group in each.value.groups : (
-      contains(keys(aws_iam_group.this), group) ?
-      aws_iam_group.this[group].name :
-      group
-    )
-  ]
-
-}
-
 resource "aws_iam_group_policy_attachment" "this" {
   for_each = {
-    for attachment in [
-      for group in local.groups : setproduct([group.name], group.policy_arns)
-      ] : format("%s-%s", attachment[0], attachment[1]) => {
+    for attachment in concat([ for group in local.groups : setproduct([group.name], group.policy_arns)]...) :
+    format("%s-%s", attachment[0], attachment[1]) => {
       group      = attachment[0]
       policy_arn = attachment[1]
     }
@@ -134,10 +136,12 @@ resource "aws_iam_group_policy_attachment" "this" {
 }
 
 resource "aws_iam_group_policy" "this" {
-  for_each = { for name, attributes in local.groups : name => attributes if contains(attributes, "policy") }
+  for_each = {
+    for name, attributes in local.groups : name => attributes if attributes.policy != ""
+  }
 
   name  = each.value.name
   group = each.value.name
 
-  policy = jsonencode(each.value.policy)
+  policy = each.value.policy
 }

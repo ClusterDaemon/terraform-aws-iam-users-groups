@@ -1,3 +1,4 @@
+# vim: tabstop=2 shiftwidth=2 expandtab
 variable "groups" {
   description = <<EOT
     Controls the existence of groups, in addition to handling policy. Some groups are built-in, and will show via output
@@ -8,7 +9,7 @@ variable "groups" {
     name        = string
     path        = optional(string, "/")
     policy_arns = optional(list(string), [])
-    policy      = optional(string)
+    policy      = optional(string, "")
   }))
 
   default = []
@@ -21,9 +22,13 @@ variable "users" {
   EOT
 
   type = list(object({
-    name   = string
-    path   = optional(string, "/")
-    groups = optional(list(string), [])
+    name           = string
+    pgp_public_key = string
+    path           = optional(string, "/")
+    groups         = optional(list(string), [])
+    enable_mfa     = optional(bool, false)
+    policy_arns    = optional(list(string), [])
+    policy         = optional(string, "")
 
     console_password = optional(object({
       generate_password       = bool
@@ -36,19 +41,28 @@ variable "users" {
     access_keys = optional(list(object({
       name   = string
       status = optional(string, "Active")
-    })))
+    })),
+      []
+    )
 
-    enable_mfa     = optional(bool, false)
-    policy_arns    = optional(list(string), [])
-    policy         = optional(string)
-    pgp_public_key = string
   }))
 
   validation {
     condition = alltrue([
+      for name in var.users[*].name : length(regexall("^[a-zA-Z0-9\\-_,.@+=]*$", name)) > 0
+    ])
+
+    error_message = <<EOT
+      Invalid value for name (must only contain alphanumeric characters, hyphens, underscores, commas,
+      periods, @ symbols, plus and equals signs).
+    EOT
+  }
+
+  validation {
+    condition = alltrue([
       for public_key in var.users[*].pgp_public_key : anytrue([
-        can(base64decode(public_key)),
-        regexall("^keybase\\:.*", public_key) > 0
+        length(regexall("^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$", public_key)) > 0,
+        length(regexall("^keybase:[a-z0-9]+$", public_key)) > 0
       ])
     ])
     error_message = <<EOT
@@ -58,7 +72,9 @@ variable "users" {
 
   validation {
     condition = alltrue([
-      for key_status in flatten(var.users[*].access_keys[*].status) : regexall("^(Active|Inactive)$", key_status) > 0
+      for key in flatten(var.users[*].access_keys) : (
+        length(regexall("^(Active|Inactive)$", key.status)) > 0
+      )
     ])
 
     error_message = "Access keys can have a status of Active or Inactive, which is case sensitive."
