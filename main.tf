@@ -47,9 +47,9 @@ resource "aws_iam_user_group_membership" "this" {
 
 resource "aws_iam_user_policy_attachment" "this" {
   for_each = {
-    for attachment in concat([
+    for attachment in concat([], [
       for user in local.users : setproduct([user.name], user.policy_arns)
-    ]... ) : format("%s-%s", attachment[0], attachment[1]) => {
+    ]...) : format("%s-%s", attachment[0], attachment[1]) => {
       user       = attachment[0]
       policy_arn = attachment[1]
     } 
@@ -83,7 +83,7 @@ resource "aws_iam_user_login_profile" "this" {
 
 resource "aws_iam_access_key" "this" {
   for_each = {
-    for keys in concat([
+    for keys in concat([], [
       for name, attributes in local.users : setproduct(
         [name],
         [ for key in attributes.access_keys : merge(key, { pgp_key = attributes.pgp_public_key }) ]
@@ -121,7 +121,7 @@ resource "aws_iam_group" "this" {
 
 resource "aws_iam_group_policy_attachment" "this" {
   for_each = {
-    for attachment in concat([ for group in local.groups : setproduct([group.name], group.policy_arns)]...) :
+    for attachment in concat([], [ for group in local.groups : setproduct([group.name], group.policy_arns)]...) :
     format("%s-%s", attachment[0], attachment[1]) => {
       group      = attachment[0]
       policy_arn = attachment[1]

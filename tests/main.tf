@@ -111,31 +111,31 @@ module "users_groups" {
   ]
 }
 
-#module "only_users" {
-#  source = "../"
-#
-#  users = [
-#    {
-#      name = "OnlyUsers"
-#      pgp_public_key = pgp_key.joe.public_key_base64
-#    }
-#  ]
-#}
-#
-#module "only_groups" {
-#  source = "../"
-#
-#  groups = [
-#    {
-#      name = "OnlyGroups"
-#    }
-#  ]
-#}
+module "only_users" {
+  source = "../"
+
+  users = [
+    {
+      name = "OnlyUsers"
+      pgp_public_key = pgp_key.joe.public_key_base64
+    }
+  ]
+}
+
+module "only_groups" {
+  source = "../"
+
+  groups = [
+    {
+      name = "OnlyGroups"
+    }
+  ]
+}
 
 # Feels like I'm wearing nothing at all!
-#module "nothing_at_all" { # Nothing at all!
-#  source = "../"
-#}
+module "nothing_at_all" { # Nothing at all!
+  source = "../"
+}
 
 output "users" {
   value = module.users_groups.users
@@ -145,14 +145,14 @@ output "groups" {
   value = module.users_groups.groups
 }
 
-#output "only_users" {
-#  value = module.only_users.users
-#}
-#
-#output "only_groups" {
-#  value = module.only_groups.groups
-#}
+output "only_users" {
+  value = module.only_users.users
+}
 
-#output "nothing_at_all" {
-#  value = module.nothing_at_all
-#}
+output "only_groups" {
+  value = module.only_groups.groups
+}
+
+output "nothing_at_all" {
+  value = module.nothing_at_all
+}
