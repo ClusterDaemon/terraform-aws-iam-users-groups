@@ -7,6 +7,14 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 4.65"
     }
+    http = {
+      source = "hashicorp/http"
+      version = "3.3.0"
+    }
+    external = {
+      source = "hashicorp/external"
+      version = "2.3.1"
+    }
   }
 }
 
@@ -14,6 +22,7 @@ locals {
   users  = var.users != tolist([]) ? { for user in var.users : user.name => user } : {}
   groups = var.groups != tolist([]) ? { for group in var.groups : group.name => group } : {}
 }
+
 
 #########
 # Users #
@@ -106,6 +115,54 @@ resource "aws_iam_virtual_mfa_device" "this" {
 
   virtual_mfa_device_name = each.value.name
   path                    = each.value.path
+}
+
+data "http" "keybase" {
+  for_each = {
+    for name, attributes in local.users : name => attributes.pgp_public_key
+    if length(regexall("^keybase:[a-z0-9]+$", attributes.pgp_public_key)) > 0
+  }
+
+  url = format(
+    "https://keybase.io/_/api/1.0/user/lookup.json?usernames=%s",
+    split(":", each.value)[1]
+  )
+}
+
+data "external" "encrypt_and_encode_mfa_qr" {
+  for_each = {
+    for name, attributes in local.users : name => merge(attributes, {
+
+      pgp_public_key = (
+        length(regexall("^keybase:[a-z0-9]+$", attributes.pgp_public_key)) > 0 ?
+        base64encode(jsondecode(data.http.keybase[name].body).them[0].public_keys.primary.bundle) :
+        attributes.pgp_public_key
+      )
+
+      username = (
+        length(regexall("^keybase:[a-z0-9]+$", attributes.pgp_public_key)) > 0 ?
+        jsondecode(data.http.keybase[name].body).them[0].basics.username :
+        name
+      )
+
+    })
+    if attributes.enable_mfa
+  }
+
+  program = ["bash", "-c", <<EOT
+    echo '${each.value.pgp_public_key}' |\
+    gpg --import --no-default-keyring --keyring ./tempkeyring.gpg ;\
+    echo '${aws_iam_virtual_mfa_device.this[each.key].qr_code_png}' |\
+    gpg --yes \
+      --batch \
+      --encrypt \
+      --recipient ${each.value.username} \
+      --no-default-keyring \
+      --keyring ./tempkeyring.gpg |\
+    base64 |\
+    jq -R -s '{encrypted_file_b64: .}'
+    EOT
+  ]
 }
 
 ##########
