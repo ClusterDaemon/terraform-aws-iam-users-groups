@@ -7,11 +7,16 @@ terraform {
     }
   }
 }
+
 provider "aws" {
   region = "us-east-1"
 }
 
 provider "pgp" {}
+
+provider "http" {}
+
+provider "external" {}
 
 resource "pgp_key" "joe" {
   name    = "Joe Dirt"
