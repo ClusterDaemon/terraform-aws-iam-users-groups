@@ -47,26 +47,25 @@ resource "aws_iam_user_group_membership" "this" {
 
 resource "aws_iam_user_policy_attachment" "this" {
   for_each = {
-    for attachment in concat([
+    for attachment in concat([], [
       for user in local.users : setproduct([user.name], user.policy_arns)
-    ]... ) : format("%s-%s", attachment[0], attachment[1]) => {
+    ]...) : format("%s-%s", attachment[0], attachment[1]) => {
       user       = attachment[0]
       policy_arn = attachment[1]
     } 
   }
 
-  user       = each.value.user
+  user       = aws_iam_user.this[each.value.user].name
   policy_arn = each.value.policy_arn
 }
 
 resource "aws_iam_user_policy" "this" {
   for_each = {
-    for name, attributes in local.users : name => attributes
-    if attributes.policy != ""
+    for name, attributes in local.users : name => attributes if attributes.policy != ""
   }
 
   name = each.value.name
-  user = each.value.name
+  user = aws_iam_user.this[each.value.name].name
 
   policy = each.value.policy
 }
@@ -76,17 +75,15 @@ resource "aws_iam_user_login_profile" "this" {
     for name, attributes in local.users : name => attributes if attributes.console_password.generate_password
   }
 
-  user = each.value.name
-
-  pgp_key = each.value.pgp_public_key
-
+  user                    = aws_iam_user.this[each.key].name
+  pgp_key                 = each.value.pgp_public_key
   password_length         = each.value.console_password.password_length
   password_reset_required = each.value.console_password.password_reset_required
 }
 
 resource "aws_iam_access_key" "this" {
   for_each = {
-    for keys in concat([
+    for keys in concat([], [
       for name, attributes in local.users : setproduct(
         [name],
         [ for key in attributes.access_keys : merge(key, { pgp_key = attributes.pgp_public_key }) ]
@@ -98,7 +95,7 @@ resource "aws_iam_access_key" "this" {
     }
   }
 
-  user    = each.value.name
+  user    = aws_iam_user.this[each.value.name].name
   pgp_key = each.value.pgp_key
 }
 
@@ -124,14 +121,14 @@ resource "aws_iam_group" "this" {
 
 resource "aws_iam_group_policy_attachment" "this" {
   for_each = {
-    for attachment in concat([ for group in local.groups : setproduct([group.name], group.policy_arns)]...) :
+    for attachment in concat([], [ for group in local.groups : setproduct([group.name], group.policy_arns)]...) :
     format("%s-%s", attachment[0], attachment[1]) => {
       group      = attachment[0]
       policy_arn = attachment[1]
     }
   }
 
-  group      = each.value.group
+  group      = aws_iam_group.this[each.value.group].name
   policy_arn = each.value.policy_arn
 }
 
@@ -141,7 +138,7 @@ resource "aws_iam_group_policy" "this" {
   }
 
   name  = each.value.name
-  group = each.value.name
+  group = aws_iam_group.this[each.value.name].name
 
   policy = each.value.policy
 }
