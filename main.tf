@@ -55,18 +55,17 @@ resource "aws_iam_user_policy_attachment" "this" {
     } 
   }
 
-  user       = each.value.user
+  user       = aws_iam_user.this[each.value.user].name
   policy_arn = each.value.policy_arn
 }
 
 resource "aws_iam_user_policy" "this" {
   for_each = {
-    for name, attributes in local.users : name => attributes
-    if attributes.policy != ""
+    for name, attributes in local.users : name => attributes if attributes.policy != ""
   }
 
   name = each.value.name
-  user = each.value.name
+  user = aws_iam_user.this[each.value.name].name
 
   policy = each.value.policy
 }
@@ -76,10 +75,8 @@ resource "aws_iam_user_login_profile" "this" {
     for name, attributes in local.users : name => attributes if attributes.console_password.generate_password
   }
 
-  user = each.value.name
-
-  pgp_key = each.value.pgp_public_key
-
+  user                    = aws_iam_user.this[each.key].name
+  pgp_key                 = each.value.pgp_public_key
   password_length         = each.value.console_password.password_length
   password_reset_required = each.value.console_password.password_reset_required
 }
@@ -98,7 +95,7 @@ resource "aws_iam_access_key" "this" {
     }
   }
 
-  user    = each.value.name
+  user    = aws_iam_user.this[each.value.name].name
   pgp_key = each.value.pgp_key
 }
 
@@ -131,7 +128,7 @@ resource "aws_iam_group_policy_attachment" "this" {
     }
   }
 
-  group      = each.value.group
+  group      = aws_iam_group.this[each.value.group].name
   policy_arn = each.value.policy_arn
 }
 
@@ -141,7 +138,7 @@ resource "aws_iam_group_policy" "this" {
   }
 
   name  = each.value.name
-  group = each.value.name
+  group = aws_iam_group.this[each.value.name].name
 
   policy = each.value.policy
 }

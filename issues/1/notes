@@ -1,0 +1,120 @@
+No issues with destruction.
+
+
+Issue reproduction, cold applying after complete destruction:
+
+
+dhay@roach:~/git/ClusterDaemon/terraform-aws-iam-users-groups/tests$ terraform apply "./issues/1/complete-apply-issue-present.tfplan"
+pgp_key.joe: Creating...
+pgp_key.joe: Creation complete after 0s [id=c0926b5e8f0322589ee45e78beba95fe5049e6fe]
+module.users_groups.aws_iam_user_policy.this["ClusterDaemon"]: Creating...
+module.users_groups.aws_iam_group.this["Administrators"]: Creating...
+module.users_groups.aws_iam_group_policy.this["Nobodies"]: Creating...
+module.users_groups.aws_iam_group_policy_attachment.this["Administrators-arn:aws:iam::aws:policy/AdministratorAccess"]: Creating...
+module.users_groups.aws_iam_user_policy_attachment.this["ClusterDaemon-arn:aws:iam::aws:policy/AdministratorAccess"]: Creating...
+module.users_groups.aws_iam_virtual_mfa_device.this["ClusterDaemon"]: Creating...
+module.users_groups.aws_iam_user_login_profile.this["Joe-Dirt"]: Creating...
+module.users_groups.aws_iam_user.this["Joe-Dirt"]: Creating...
+module.users_groups.aws_iam_user.this["NoAccess"]: Creating...
+module.users_groups.aws_iam_user.this["ClusterDaemon"]: Creating...
+module.users_groups.aws_iam_access_key.this["Joe-Dirt-able"]: Creating...
+module.users_groups.aws_iam_access_key.this["Joe-Dirt-baker"]: Creating...
+module.users_groups.aws_iam_access_key.this["ClusterDaemon-thing1"]: Creating...
+module.users_groups.aws_iam_user_policy.this["ClusterDaemon"]: Creation complete after 1s [id=ClusterDaemon:ClusterDaemon]
+module.users_groups.aws_iam_virtual_mfa_device.this["Joe-Dirt"]: Creating...
+module.users_groups.aws_iam_user.this["ClusterDaemon"]: Creation complete after 1s [id=ClusterDaemon]
+module.users_groups.aws_iam_group.this["Nobodies"]: Creating...
+module.users_groups.aws_iam_user.this["Joe-Dirt"]: Creation complete after 1s [id=Joe-Dirt]
+module.users_groups.aws_iam_user.this["NoAccess"]: Creation complete after 1s [id=NoAccess]
+module.users_groups.aws_iam_access_key.this["Joe-Dirt-able"]: Creation complete after 0s [id=AKIA5JCVTT7672J755KV]
+module.users_groups.aws_iam_access_key.this["Joe-Dirt-baker"]: Creation complete after 0s [id=AKIA5JCVTT762IUG36VP]
+module.users_groups.aws_iam_user_policy_attachment.this["ClusterDaemon-arn:aws:iam::aws:policy/AdministratorAccess"]: Creation complete after 1s [id=ClusterDaemon-20230522231909106800000001]
+module.users_groups.aws_iam_group.this["Administrators"]: Creation complete after 1s [id=Administrators]
+module.users_groups.aws_iam_virtual_mfa_device.this["ClusterDaemon"]: Creation complete after 1s [id=arn:aws:iam::912860094461:mfa/ClusterDaemon]
+module.users_groups.aws_iam_virtual_mfa_device.this["Joe-Dirt"]: Creation complete after 1s [id=arn:aws:iam::912860094461:mfa/Joe-Dirt]
+module.users_groups.aws_iam_group.this["Nobodies"]: Creation complete after 1s [id=Nobodies]
+module.users_groups.aws_iam_user_group_membership.this["NoAccess"]: Creating...
+module.users_groups.aws_iam_user_group_membership.this["Joe-Dirt"]: Creating...
+module.users_groups.aws_iam_user_group_membership.this["ClusterDaemon"]: Creating...
+module.users_groups.aws_iam_access_key.this["ClusterDaemon-thing1"]: Creation complete after 1s [id=AKIA5JCVTT7624PN4YUW]
+module.users_groups.aws_iam_user_group_membership.this["ClusterDaemon"]: Creation complete after 0s [id=terraform-20230522231909708400000002]
+module.users_groups.aws_iam_user_group_membership.this["NoAccess"]: Creation complete after 0s [id=terraform-20230522231909874000000003]
+module.users_groups.aws_iam_user_group_membership.this["Joe-Dirt"]: Creation complete after 0s [id=terraform-20230522231909881400000004]
+╷
+│ Error: creating IAM User Login Profile for "Joe-Dirt": NoSuchEntity: The user with name Joe-Dirt cannot be found.
+│       status code: 404, request id: b994737f-3ccf-4a3a-a45e-a6ba5576c42d
+│
+│   with module.users_groups.aws_iam_user_login_profile.this["Joe-Dirt"],
+│   on ../main.tf line 74, in resource "aws_iam_user_login_profile" "this":
+│   74: resource "aws_iam_user_login_profile" "this" {
+│
+╵
+╷
+│ Error: attaching policy arn:aws:iam::aws:policy/AdministratorAccess to IAM group Administrators: NoSuchEntity: The group with name Administrators cannot be found.
+│       status code: 404, request id: 48a0bb77-f15e-4dfe-9ee0-3e83cdf095c3
+│
+│   with module.users_groups.aws_iam_group_policy_attachment.this["Administrators-arn:aws:iam::aws:policy/AdministratorAccess"],
+│   on ../main.tf line 125, in resource "aws_iam_group_policy_attachment" "this":
+│  125: resource "aws_iam_group_policy_attachment" "this" {
+│
+╵
+╷
+│ Error: putting IAM group policy Nobodies: NoSuchEntity: The group with name Nobodies cannot be found.
+│       status code: 404, request id: 7d24ae43-bd8e-4a95-abf5-89505d144994
+│
+│   with module.users_groups.aws_iam_group_policy.this["Nobodies"],
+│   on ../main.tf line 138, in resource "aws_iam_group_policy" "this":
+│  138: resource "aws_iam_group_policy" "this" {
+│
+╵
+
+***
+
+Found configuration flaws for all three.
+
+More to come:
+
+╷
+│ Error: attaching policy arn:aws:iam::aws:policy/AdministratorAccess to IAM User ClusterDaemon: NoSuchEntity: The user with name ClusterDaemon cannot be found.
+│       status code: 404, request id: 297d7870-85ae-4fc9-9ac3-8d9ecbdff018
+│
+│   with module.users_groups.aws_iam_user_policy_attachment.this["ClusterDaemon-arn:aws:iam::aws:policy/AdministratorAccess"],
+│   on ../main.tf line 48, in resource "aws_iam_user_policy_attachment" "this":
+│   48: resource "aws_iam_user_policy_attachment" "this" {
+│
+╵
+╷
+│ Error: putting IAM User Policy ClusterDaemon: NoSuchEntity: The user with name ClusterDaemon cannot be found.
+│       status code: 404, request id: ce82b3d5-4a9a-4062-9631-2496f79da0d6
+│
+│   with module.users_groups.aws_iam_user_policy.this["ClusterDaemon"],
+│   on ../main.tf line 62, in resource "aws_iam_user_policy" "this":
+│   62: resource "aws_iam_user_policy" "this" {
+│
+╵
+╷
+│ Error: creating IAM Access Key (Joe-Dirt): NoSuchEntity: The user with name Joe-Dirt cannot be found.
+│       status code: 404, request id: a29d480e-de8a-488d-a2a5-0550262d11e5
+│
+│   with module.users_groups.aws_iam_access_key.this["Joe-Dirt-able"],
+│   on ../main.tf line 85, in resource "aws_iam_access_key" "this":
+│   85: resource "aws_iam_access_key" "this" {
+│
+╵
+╷
+│ Error: putting IAM group policy Nobodies: NoSuchEntity: The group with name Nobodies cannot be found.
+│       status code: 404, request id: bc2e353d-2c3c-4927-a172-d984ae6a759b
+│
+│   with module.users_groups.aws_iam_group_policy.this["Nobodies"],
+│   on ../main.tf line 136, in resource "aws_iam_group_policy" "this":
+│  136: resource "aws_iam_group_policy" "this" {
+│
+╵
+
+
+Found a planning bug, where the PNG QR code output knocks my terminal around. This isn't all that surprising, so I think
+I'll just turn it off for now.
+
+Found a solution to the PNG thing - mark it sensitive and encrypt it. Just need a data source for keybase keys.
+
+Clean apply.
