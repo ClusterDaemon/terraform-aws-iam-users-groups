@@ -17,18 +17,22 @@ variable "groups" {
 
 variable "users" {
   description = <<EOT
-    Controls the existence of users in addition to handling access and policy. Some users are built-in, and will show
-    via output along with provided users.
+    Controls the existence of users in addition to handling access and policy. Required object attributes are name and
+    pgp.
   EOT
 
   type = list(object({
     name           = string
-    pgp_public_key = string
     path           = optional(string, "/")
     groups         = optional(list(string), [])
     enable_mfa     = optional(bool, false)
     policy_arns    = optional(list(string), [])
     policy         = optional(string, "")
+
+    pgp = object({
+      public_key_base64 = optional(string)
+      keybase_username  = optional(string)
+    })
 
     console_password = optional(object({
       generate_password       = bool
@@ -38,10 +42,11 @@ variable "users" {
       generate_password = false
     })
 
-    access_keys = optional(list(object({
-      name   = string
-      status = optional(string, "Active")
-    })),
+    access_keys = optional(
+      list(object({
+        name   = string
+        status = optional(string, "Active")
+      })),
       []
     )
 
@@ -58,16 +63,27 @@ variable "users" {
     EOT
   }
 
+  # Check if base64 regardless of character set.
   validation {
-    condition = alltrue([
-      for public_key in var.users[*].pgp_public_key : anytrue([
-        length(regexall("^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$", public_key)) > 0,
-        length(regexall("^keybase:[a-z0-9]+$", public_key)) > 0
-      ])
+    condition = alltrue([ for public_key_base64 in var.users[*].pgp.public_key_base64 :
+      (
+        public_key_base64 == null ? true :
+        length(regexall("^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$", public_key_base64)) > 0
+      )
     ])
-    error_message = <<EOT
-      Public PGP key must either be a base64 encoded key or a keybase identity that has a PGP key (keybase:<username>).
-    EOT
+    
+    error_message = "Invalid value for pgp.public_key_base64 (must only contain a base64-encoded public PGP key)."
+  }
+
+  validation {
+    condition = alltrue(
+      [ for user in var.users : anytrue([ user.pgp.public_key_base64 != null,  user.pgp.keybase_username != null ]) ]
+    )
+
+  error_message = <<EOT
+    All users must supply a public PGP key, either via pgp.public_key_base64 or pgp.keybase_username. If both are set,
+    pgp.public_key_base64 will be used. This way, explicit declaration of a key disables key discovery via keybase.
+  EOT
   }
 
   validation {
@@ -77,7 +93,7 @@ variable "users" {
       )
     ])
 
-    error_message = "Access keys can have a status of Active or Inactive, which is case sensitive."
+    error_message = "Invalid value for status in access_keys[{}] (must contain Active or Inactive)."
   }
 
   default = []

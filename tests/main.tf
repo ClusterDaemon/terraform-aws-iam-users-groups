@@ -30,41 +30,50 @@ module "users_groups" {
   users = [
 
     {
-      name           = "Joe-Dirt"
-      pgp_public_key = pgp_key.joe.public_key_base64
+      name       = "Person"
+      enable_mfa = true
+
+      pgp = {
+        public_key_base64 = pgp_key.joe.public_key_base64
+      }
 
       console_password = {
         generate_password = true
       }
 
       access_keys = [
-        { name = "able" },
         {
-          name = "baker"
+          name   = "able"
+          status = "Active"
+        },
+        {
+          name   = "baker"
           status = "Inactive"
         }
       ]
       
-      enable_mfa = true
 
       groups = ["Administrators"]
     },
 
     {
-      name           = "ClusterDaemon"
-      pgp_public_key = "keybase:clusterdaemon"
+      name        = "ClusterDaemon"
       enable_mfa  = true
 
-      policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
+      pgp = {
+        keybase_username = "clusterdaemon"
+      }
 
       access_keys = [{ name = "thing1" }]
+
+      policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
 
       policy = jsonencode(
         {
           "Version": "2012-10-17",
           "Statement": [
             {
-              "Sid": "LameExample",
+              "Sid": "NotMuch",
               "Effect": "Allow",
               "Action": [
                 "s3:ListBuckets"
@@ -80,7 +89,9 @@ module "users_groups" {
     {
       name = "NoAccess"
       groups = [ "Nobodies" ]
-      pgp_public_key = "keybase:clusterdaemon"
+      pgp = {
+        public_key_base64 = pgp_key.joe.public_key_base64
+      }
     }
 
   ]
@@ -100,11 +111,9 @@ module "users_groups" {
           "Version": "2012-10-17",
           "Statement": [
             {
-              "Sid": "LameExample",
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBuckets"
-              ],
+              "Sid": "No",
+              "Effect": "Deny",
+              "Action": "*"
               "Resource": "*"
             }
           ]
@@ -122,7 +131,9 @@ module "only_users" {
   users = [
     {
       name = "OnlyUsers"
-      pgp_public_key = pgp_key.joe.public_key_base64
+      pgp = {
+        public_key_base64 = pgp_key.joe.public_key_base64
+      }
     }
   ]
 }

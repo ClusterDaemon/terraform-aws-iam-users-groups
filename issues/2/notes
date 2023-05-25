@@ -1,4 +1,4 @@
-When adding the initial http data sources and external programs,
+When adding the initial http data sources and external program to handle QR codes,
 
 ╷
 │ Error: Invalid for_each argument
@@ -11,15 +11,8 @@ When adding the initial http data sources and external programs,
 │     ├────────────────
 │     │ local.users is map of object with 3 elements
 │
-│ The "for_each" map includes keys derived from resource attributes that cannot be determined until apply, and so Terraform cannot determine the
-│ full set of keys that will identify the instances of this resource.
-│
-│ When working with unknown values in for_each, it's better to define the map keys statically in your configuration and place apply-time results
-│ only in the map values.
-│
-│ Alternatively, you could use the -target planning option to first apply only the resources that the for_each value depends on, and then apply
-│ a second time to fully converge.
-╵
+│ The "for_each" map includes keys derived from resource attributes that cannot be determined until apply, and so
+│ Terraform cannot determine the full set of keys that will identify the instances of this resource.
 ╷
 │ Error: Invalid for_each argument
 │
@@ -31,11 +24,19 @@ When adding the initial http data sources and external programs,
 │     ├────────────────
 │     │ local.users is map of object with 1 element
 │
-│ The "for_each" map includes keys derived from resource attributes that cannot be determined until apply, and so Terraform cannot determine the
-│ full set of keys that will identify the instances of this resource.
-│
-│ When working with unknown values in for_each, it's better to define the map keys statically in your configuration and place apply-time results
-│ only in the map values.
-│
-│ Alternatively, you could use the -target planning option to first apply only the resources that the for_each value depends on, and then apply
-│ a second time to fully converge.
+│ The "for_each" map includes keys derived from resource attributes that cannot be determined until apply, and so
+│ Terraform cannot determine the full set of keys that will identify the instances of this resource.
+
+The pair of errors above indicate a minimum and maximum amount of elements in the map after filtering. The test data for
+var.users contains 3 elements, two of which contain keybase usernames for pgp_public_key.
+
+The conditional on line 123 changes the amount of keys in data.http.keybase, and the amount is
+unknown because we can't know if the content of the public key matches the regex filter.
+
+This would not be an unusual pattern of usage for this resource module, so the issue is worth addressing within the
+module. In order to get around this error, the value of the key/value pair containing the key must not be evaluated -
+rather, whether the key has been set. This means that this conditional must be split into two keys.
+
+These two keys must be optional within the users object schema, but at least one of them is required. This can be
+enforced via validation rules, as the only structure the schema will require is an empty object for what will now be
+keyed as `pgp`.
