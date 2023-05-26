@@ -19,8 +19,18 @@ terraform {
 }
 
 locals {
-  users  = var.users != tolist([]) ? { for user in var.users : user.name => user } : {}
-  groups = var.groups != tolist([]) ? { for group in var.groups : group.name => group } : {}
+  users  = {
+    for user, attributes in var.users :
+      (attributes.name != "" ? attributes.name : user) => (
+        attributes.name != "" ? attributes : merge(attributes, { name = user })
+      )
+  }
+  groups  = {
+    for group, attributes in var.groups :
+      (attributes.name != "" ? attributes.name : group) => (
+        attributes.name != "" ? attributes : merge(attributes, { name = group })
+      )
+  }
 }
 
 
@@ -89,9 +99,9 @@ resource "aws_iam_user_login_profile" "this" {
   password_reset_required = each.value.console_password.password_reset_required
 
   pgp_key = (
-    contains(keys(each.value.pgp), "public_key_base64") ?
+    each.value.pgp.public_key_base64 != "" ?
     each.value.pgp.public_key_base64 :
-    each.value.pgp.keybase_username
+    format("keybase:%s", each.value.pgp.keybase_username)
   )
 
 }
@@ -106,69 +116,16 @@ resource "aws_iam_access_key" "this" {
     ]...) : format("%s-%s", keys[0], keys[1].name) => {
       name    = keys[0]
       status  = keys[1].status
-
       pgp_key = (
-        contains(keys(keys[1].pgp), "public_key_base64") ?
-        keys[1].pgp.public_key_base64 :
-        keys[1].pgp.keybase_username
+        keys[1].pgp.public_key_base64 != "" ? 
+        keys[1].pgp.public_key_base64 : 
+        format("keybase:%s", keys[1].pgp.keybase_username)
       )
     }
   }
 
   user    = aws_iam_user.this[each.value.name].name
   pgp_key = each.value.pgp_key
-}
-
-resource "aws_iam_virtual_mfa_device" "this" {
-  for_each = {
-    for name, attributes in local.users : name => attributes if attributes.enable_mfa
-  }
-
-  virtual_mfa_device_name = each.value.name
-  path                    = each.value.path
-}
-
-data "http" "keybase" {
-  for_each = {
-    for name, attributes in local.users : name => attributes.pgp
-    if alltrue([attributes.pgp.keybase_username != null, attributes.pgp.public_key_base64 == null])
-  }
-
-  url = format(
-    "https://keybase.io/_/api/1.0/user/lookup.json?usernames=%s",
-    each.value.keybase_username
-  )
-}
-
-data "external" "encrypt_and_encode_mfa_qr" {
-  for_each = {
-    for name, attributes in local.users : name => merge(attributes, {
-      username = attributes.pgp.keybase_username != null ? attributes.pgp.keybase_username : name
-
-      pgp_public_key = (
-        attributes.pgp.public_key_base64 != null ?
-        attributes.pgp.public_key_base64 :
-        base64encode(jsondecode(data.http.keybase[name].body).them[0].public_keys.primary.bundle)
-      )
-
-    })
-    if attributes.enable_mfa
-  }
-
-  program = ["bash", "-c", <<-EOT
-    echo '${each.value.pgp_public_key}' |\
-    gpg --import --no-default-keyring --keyring ./tempkeyring.gpg ;\
-    echo '${aws_iam_virtual_mfa_device.this[each.key].qr_code_png}' |\
-    gpg --yes \
-      --batch \
-      --encrypt \
-      --recipient ${each.value.username} \
-      --no-default-keyring \
-      --keyring ./tempkeyring.gpg |\
-    base64 |\
-    jq -R -s '{encrypted_file_b64: .}'
-    EOT
-  ]
 }
 
 ##########

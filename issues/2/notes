@@ -40,3 +40,97 @@ rather, whether the key has been set. This means that this conditional must be s
 These two keys must be optional within the users object schema, but at least one of them is required. This can be
 enforced via validation rules, as the only structure the schema will require is an empty object for what will now be
 keyed as `pgp`.
+
+The following now causes issues:
+
+data "external" "encrypt_and_encode_mfa_qr" {
+  for_each = {
+    for name, attributes in local.users : name => merge(attributes, {
+      username = attributes.pgp.keybase_username != null ? attributes.pgp.keybase_username : name
+
+      pgp_public_key = (
+        attributes.pgp.public_key_base64 != null ?
+        attributes.pgp.public_key_base64 :
+        base64encode(jsondecode(data.http.keybase[name].body).them[0].public_keys.primary.bundle)
+      )
+
+    })
+    if attributes.enable_mfa
+  }
+
+  program = ["bash", "-c", <<-EOT
+    echo '${each.value.pgp_public_key}' |\
+    gpg --import --no-default-keyring --keyring ./tempkeyring.gpg ;\
+    echo '${aws_iam_virtual_mfa_device.this[each.key].qr_code_png}' |\
+    gpg --yes \
+      --batch \
+      --encrypt \
+      --recipient ${each.value.username} \
+      --no-default-keyring \
+      --keyring ./tempkeyring.gpg |\
+    base64 |\
+    jq -R -s '{encrypted_file_b64: .}'
+    EOT
+  ]
+}
+
+│ Error: External Program Execution Failed
+│
+│   with module.users_groups.data.external.encrypt_and_encode_mfa_qr["ClusterDaemon"],
+│   on ../main.tf line 158, in data "external" "encrypt_and_encode_mfa_qr":
+│  158:   program = ["bash", "-c", <<-EOT
+│  159:     echo '${each.value.pgp_public_key}' |\
+│  160:     gpg --import --no-default-keyring --keyring ./tempkeyring.gpg ;\
+│  161:     echo '${aws_iam_virtual_mfa_device.this[each.key].qr_code_png}' |\
+│  162:     gpg --yes \
+│  163:       --batch \
+│  164:       --encrypt \
+│  165:       --recipient ${each.value.username} \
+│  166:       --no-default-keyring \
+│  167:       --keyring ./tempkeyring.gpg |\
+│  168:     base64 |\
+│  169:     jq -R -s '{encrypted_file_b64: .}'
+│  170:     EOT
+│  171:   ]
+│
+│ The data source received an unexpected error while attempting to execute the program.
+│
+│ Program: /usr/bin/bash
+│ Error: fork/exec /usr/bin/bash: invalid argument
+╵
+╷
+│ Error: External Program Execution Failed
+│
+│   with module.users_groups.data.external.encrypt_and_encode_mfa_qr["Person"],
+│   on ../main.tf line 158, in data "external" "encrypt_and_encode_mfa_qr":
+│  158:   program = ["bash", "-c", <<-EOT
+│  159:     echo '${each.value.pgp_public_key}' |\
+│  160:     gpg --import --no-default-keyring --keyring ./tempkeyring.gpg ;\
+│  161:     echo '${aws_iam_virtual_mfa_device.this[each.key].qr_code_png}' |\
+│  162:     gpg --yes \
+│  163:       --batch \
+│  164:       --encrypt \
+│  165:       --recipient ${each.value.username} \
+│  166:       --no-default-keyring \
+│  167:       --keyring ./tempkeyring.gpg |\
+│  168:     base64 |\
+│  169:     jq -R -s '{encrypted_file_b64: .}'
+│  170:     EOT
+│  171:   ]
+│
+│ The data source received an unexpected error while attempting to execute the program.
+│
+│ Program: /usr/bin/bash
+│ Error: fork/exec /usr/bin/bash: invalid argument
+
+It fails with invalid args for bash. Likely related to the heredoc.
+
+Formatting this is awful, and will continue to be awful. It needs to be done via a script so there aren't so many layers
+of interpretation.
+
+After implementing that as a script and updating some schema (including getting rid of the lists input in favor of maps
+so they can be merged easily), mfa experiences aren't so bad. Needs documentation, despite the attributes having fairly
+obvious names. The only issue I take with this solution is that it's not portable outside of unix systems, and it's not
+been tested on anything other than Linux.
+
+This could be solved more portably via Python or Go and Lambda, but the current method is good enough for now

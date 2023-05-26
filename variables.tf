@@ -1,28 +1,28 @@
 # vim: tabstop=2 shiftwidth=2 expandtab
 variable "groups" {
   description = <<EOT
-    Controls the existence of groups, in addition to handling policy. Some groups are built-in, and will show via output
-    along with provided groups.
+    Controls the existence of groups, in addition to handling policy. Map keys are group names unless overidden by
+    setting the name attribute.
   EOT
 
-  type = list(object({
-    name        = string
+  type = map(object({
+    name        = optional(string, "")
     path        = optional(string, "/")
     policy_arns = optional(list(string), [])
     policy      = optional(string, "")
   }))
 
-  default = []
+  default = {}
 }
 
 variable "users" {
   description = <<EOT
-    Controls the existence of users in addition to handling access and policy. Required object attributes are name and
-    pgp.
+    Controls the existence of users in addition to handling access and policy. Map keys are usernames unless overridden
+    by setting the name attribute.
   EOT
 
-  type = list(object({
-    name           = string
+  type = map(object({
+    name           = optional(string, "")
     path           = optional(string, "/")
     groups         = optional(list(string), [])
     enable_mfa     = optional(bool, false)
@@ -30,8 +30,8 @@ variable "users" {
     policy         = optional(string, "")
 
     pgp = object({
-      public_key_base64 = optional(string)
-      keybase_username  = optional(string)
+      public_key_base64 = optional(string, "")
+      keybase_username  = optional(string, "")
     })
 
     console_password = optional(object({
@@ -53,8 +53,8 @@ variable "users" {
   }))
 
   validation {
-    condition = alltrue([
-      for name in var.users[*].name : length(regexall("^[a-zA-Z0-9\\-_,.@+=]*$", name)) > 0
+    condition = alltrue([ for name in values(var.users)[*].name : 
+      anytrue([ length(regexall("^[a-zA-Z0-9\\-_,.@+=]*$", name)) > 0, name == "" ])
     ])
 
     error_message = <<EOT
@@ -65,9 +65,9 @@ variable "users" {
 
   # Check if base64 regardless of character set.
   validation {
-    condition = alltrue([ for public_key_base64 in var.users[*].pgp.public_key_base64 :
+    condition = alltrue([ for public_key_base64 in values(var.users)[*].pgp.public_key_base64 :
       (
-        public_key_base64 == null ? true :
+        public_key_base64 == "" ? true :
         length(regexall("^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$", public_key_base64)) > 0
       )
     ])
@@ -76,9 +76,9 @@ variable "users" {
   }
 
   validation {
-    condition = alltrue(
-      [ for user in var.users : anytrue([ user.pgp.public_key_base64 != null,  user.pgp.keybase_username != null ]) ]
-    )
+    condition = alltrue([ for user in values(var.users) :
+      anytrue([ user.pgp.public_key_base64 != "",  user.pgp.keybase_username != "" ])
+    ])
 
   error_message = <<EOT
     All users must supply a public PGP key, either via pgp.public_key_base64 or pgp.keybase_username. If both are set,
@@ -87,14 +87,12 @@ variable "users" {
   }
 
   validation {
-    condition = alltrue([
-      for key in flatten(var.users[*].access_keys) : (
-        length(regexall("^(Active|Inactive)$", key.status)) > 0
-      )
+    condition = alltrue([ for key in flatten(values(var.users)[*].access_keys) :
+      length(regexall("^(Active|Inactive)$", key.status)) > 0
     ])
 
     error_message = "Invalid value for status in access_keys[{}] (must contain Active or Inactive)."
   }
 
-  default = []
+  default = {}
 }

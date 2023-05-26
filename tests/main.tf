@@ -27,9 +27,8 @@ resource "pgp_key" "joe" {
 module "users_groups" {
   source = "../"
 
-  users = [
-
-    {
+  users = {
+    person = {
       name       = "Person"
       enable_mfa = true
 
@@ -54,9 +53,9 @@ module "users_groups" {
       
 
       groups = ["Administrators"]
-    },
+    }
 
-    {
+    clusterdaemon = {
       name        = "ClusterDaemon"
       enable_mfa  = true
 
@@ -84,9 +83,9 @@ module "users_groups" {
         }
       )
 
-    },
+    }
 
-    {
+    noaccess = {
       name = "NoAccess"
       groups = [ "Nobodies" ]
       pgp = {
@@ -94,16 +93,15 @@ module "users_groups" {
       }
     }
 
-  ]
+  }
 
-  groups = [
+  groups = {
     
-    {
-      name = "Administrators"
+    Administrators = {
       policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
-    },
+    }
 
-    {
+    nobodies = {
       name = "Nobodies"
       
       policy = jsonencode(
@@ -120,32 +118,29 @@ module "users_groups" {
         }
       )
         
-    },
+    }
 
-  ]
+  }
 }
 
 module "only_users" {
   source = "../"
 
-  users = [
-    {
-      name = "OnlyUsers"
+  users = {
+    OnlyUsers = {
       pgp = {
         public_key_base64 = pgp_key.joe.public_key_base64
       }
     }
-  ]
+  }
 }
 
 module "only_groups" {
   source = "../"
 
-  groups = [
-    {
-      name = "OnlyGroups"
-    }
-  ]
+  groups = {
+    OnlyGroups = {}
+  }
 }
 
 # Feels like I'm wearing nothing at all!
@@ -153,20 +148,16 @@ module "nothing_at_all" { # Nothing at all!
   source = "../"
 }
 
-output "users" {
-  value = module.users_groups.users
-}
-
-output "groups" {
-  value = module.users_groups.groups
+output "users_groups" {
+  value = module.users_groups
 }
 
 output "only_users" {
-  value = module.only_users.users
+  value = module.only_users
 }
 
 output "only_groups" {
-  value = module.only_groups.groups
+  value = module.only_groups
 }
 
 output "nothing_at_all" {
