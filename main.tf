@@ -5,15 +5,34 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.65"
+      version = "~>4.65"
+    }
+    http = {
+      source = "hashicorp/http"
+      version = "3.3.0"
+    }
+    external = {
+      source = "hashicorp/external"
+      version = "2.3.1"
     }
   }
 }
 
 locals {
-  users  = var.users != tolist([]) ? { for user in var.users : user.name => user } : {}
-  groups = var.groups != tolist([]) ? { for group in var.groups : group.name => group } : {}
+  users  = {
+    for user, attributes in var.users :
+      (attributes.name != "" ? attributes.name : user) => (
+        attributes.name != "" ? attributes : merge(attributes, { name = user })
+      )
+  }
+  groups  = {
+    for group, attributes in var.groups :
+      (attributes.name != "" ? attributes.name : group) => (
+        attributes.name != "" ? attributes : merge(attributes, { name = group })
+      )
+  }
 }
+
 
 #########
 # Users #
@@ -76,9 +95,15 @@ resource "aws_iam_user_login_profile" "this" {
   }
 
   user                    = aws_iam_user.this[each.key].name
-  pgp_key                 = each.value.pgp_public_key
   password_length         = each.value.console_password.password_length
   password_reset_required = each.value.console_password.password_reset_required
+
+  pgp_key = (
+    each.value.pgp.public_key_base64 != "" ?
+    each.value.pgp.public_key_base64 :
+    format("keybase:%s", each.value.pgp.keybase_username)
+  )
+
 }
 
 resource "aws_iam_access_key" "this" {
@@ -86,26 +111,21 @@ resource "aws_iam_access_key" "this" {
     for keys in concat([], [
       for name, attributes in local.users : setproduct(
         [name],
-        [ for key in attributes.access_keys : merge(key, { pgp_key = attributes.pgp_public_key }) ]
+        [ for key in attributes.access_keys : merge(key, { pgp = attributes.pgp }) ]
       )
     ]...) : format("%s-%s", keys[0], keys[1].name) => {
       name    = keys[0]
       status  = keys[1].status
-      pgp_key = keys[1].pgp_key
+      pgp_key = (
+        keys[1].pgp.public_key_base64 != "" ? 
+        keys[1].pgp.public_key_base64 : 
+        format("keybase:%s", keys[1].pgp.keybase_username)
+      )
     }
   }
 
   user    = aws_iam_user.this[each.value.name].name
   pgp_key = each.value.pgp_key
-}
-
-resource "aws_iam_virtual_mfa_device" "this" {
-  for_each = {
-    for name, attributes in local.users : name => attributes if attributes.enable_mfa
-  }
-
-  virtual_mfa_device_name = each.value.name
-  path                    = each.value.path
 }
 
 ##########

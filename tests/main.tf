@@ -7,11 +7,16 @@ terraform {
     }
   }
 }
+
 provider "aws" {
   region = "us-east-1"
 }
 
 provider "pgp" {}
+
+provider "http" {}
+
+provider "external" {}
 
 resource "pgp_key" "joe" {
   name    = "Joe Dirt"
@@ -22,44 +27,52 @@ resource "pgp_key" "joe" {
 module "users_groups" {
   source = "../"
 
-  users = [
+  users = {
+    person = {
+      name       = "Person"
+      enable_mfa = true
 
-    {
-      name           = "Joe-Dirt"
-      pgp_public_key = pgp_key.joe.public_key_base64
+      pgp = {
+        public_key_base64 = pgp_key.joe.public_key_base64
+      }
 
       console_password = {
         generate_password = true
       }
 
       access_keys = [
-        { name = "able" },
         {
-          name = "baker"
+          name   = "able"
+          status = "Active"
+        },
+        {
+          name   = "baker"
           status = "Inactive"
         }
       ]
       
-      enable_mfa = true
 
       groups = ["Administrators"]
-    },
+    }
 
-    {
-      name           = "ClusterDaemon"
-      pgp_public_key = "keybase:clusterdaemon"
+    clusterdaemon = {
+      name        = "ClusterDaemon"
       enable_mfa  = true
 
-      policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
+      pgp = {
+        keybase_username = "clusterdaemon"
+      }
 
       access_keys = [{ name = "thing1" }]
+
+      policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
 
       policy = jsonencode(
         {
           "Version": "2012-10-17",
           "Statement": [
             {
-              "Sid": "LameExample",
+              "Sid": "NotMuch",
               "Effect": "Allow",
               "Action": [
                 "s3:ListBuckets"
@@ -70,24 +83,25 @@ module "users_groups" {
         }
       )
 
-    },
-
-    {
-      name = "NoAccess"
-      groups = [ "Nobodies" ]
-      pgp_public_key = "keybase:clusterdaemon"
     }
 
-  ]
+    noaccess = {
+      name = "NoAccess"
+      groups = [ "Nobodies" ]
+      pgp = {
+        public_key_base64 = pgp_key.joe.public_key_base64
+      }
+    }
 
-  groups = [
+  }
+
+  groups = {
     
-    {
-      name = "Administrators"
+    Administrators = {
       policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
-    },
+    }
 
-    {
+    nobodies = {
       name = "Nobodies"
       
       policy = jsonencode(
@@ -95,41 +109,38 @@ module "users_groups" {
           "Version": "2012-10-17",
           "Statement": [
             {
-              "Sid": "LameExample",
-              "Effect": "Allow",
-              "Action": [
-                "s3:ListBuckets"
-              ],
+              "Sid": "No",
+              "Effect": "Deny",
+              "Action": "*"
               "Resource": "*"
             }
           ]
         }
       )
         
-    },
+    }
 
-  ]
+  }
 }
 
 module "only_users" {
   source = "../"
 
-  users = [
-    {
-      name = "OnlyUsers"
-      pgp_public_key = pgp_key.joe.public_key_base64
+  users = {
+    OnlyUsers = {
+      pgp = {
+        public_key_base64 = pgp_key.joe.public_key_base64
+      }
     }
-  ]
+  }
 }
 
 module "only_groups" {
   source = "../"
 
-  groups = [
-    {
-      name = "OnlyGroups"
-    }
-  ]
+  groups = {
+    OnlyGroups = {}
+  }
 }
 
 # Feels like I'm wearing nothing at all!
@@ -137,20 +148,16 @@ module "nothing_at_all" { # Nothing at all!
   source = "../"
 }
 
-output "users" {
-  value = module.users_groups.users
-}
-
-output "groups" {
-  value = module.users_groups.groups
+output "users_groups" {
+  value = module.users_groups
 }
 
 output "only_users" {
-  value = module.only_users.users
+  value = module.only_users
 }
 
 output "only_groups" {
-  value = module.only_groups.groups
+  value = module.only_groups
 }
 
 output "nothing_at_all" {
