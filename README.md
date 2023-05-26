@@ -29,13 +29,17 @@ This module handles various resources related to user access, and provides that 
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~>1.4 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 4.65 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~>4.65 |
+| <a name="requirement_external"></a> [external](#requirement\_external) | 2.3.1 |
+| <a name="requirement_http"></a> [http](#requirement\_http) | 3.3.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | 4.67.0 |
+| <a name="provider_external"></a> [external](#provider\_external) | 2.3.1 |
+| <a name="provider_http"></a> [http](#provider\_http) | 3.3.0 |
 
 ## Modules
 
@@ -55,13 +59,15 @@ No modules.
 | [aws_iam_user_policy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy) | resource |
 | [aws_iam_user_policy_attachment.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy_attachment) | resource |
 | [aws_iam_virtual_mfa_device.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_virtual_mfa_device) | resource |
+| [external_external.encrypt_and_encode_mfa](https://registry.terraform.io/providers/hashicorp/external/2.3.1/docs/data-sources/external) | data source |
+| [http_http.keybase](https://registry.terraform.io/providers/hashicorp/http/3.3.0/docs/data-sources/http) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_groups"></a> [groups](#input\_groups) | Controls the existence of groups, in addition to handling policy. Some groups are built-in, and will show via output<br>    along with provided groups. | <pre>list(object({<br>    name        = string<br>    path        = optional(string, "/")<br>    policy_arns = optional(list(string), [])<br>    policy      = optional(string, "")<br>  }))</pre> | `[]` | no |
-| <a name="input_users"></a> [users](#input\_users) | Controls the existence of users in addition to handling access and policy. Some users are built-in, and will show<br>    via output along with provided users. | <pre>list(object({<br>    name           = string<br>    pgp_public_key = string<br>    path           = optional(string, "/")<br>    groups         = optional(list(string), [])<br>    enable_mfa     = optional(bool, false)<br>    policy_arns    = optional(list(string), [])<br>    policy         = optional(string, "")<br><br>    console_password = optional(object({<br>      generate_password       = bool<br>      password_length         = optional(number, 20)<br>      password_reset_required = optional(bool, false)<br>      }), {<br>      generate_password = false<br>    })<br><br>    access_keys = optional(list(object({<br>      name   = string<br>      status = optional(string, "Active")<br>    })),<br>      []<br>    )<br><br>  }))</pre> | `[]` | no |
+| <a name="input_groups"></a> [groups](#input\_groups) | Controls the existence of groups, in addition to handling policy. Map keys are group names unless overidden by<br>    setting the name attribute. | <pre>map(object({<br>    name        = optional(string, "")<br>    path        = optional(string, "/")<br>    policy_arns = optional(list(string), [])<br>    policy      = optional(string, "")<br>  }))</pre> | `{}` | no |
+| <a name="input_users"></a> [users](#input\_users) | Controls the existence of users in addition to handling access and policy. Map keys are usernames unless overridden<br>    by setting the name attribute. | <pre>map(object({<br>    name           = optional(string, "")<br>    path           = optional(string, "/")<br>    groups         = optional(list(string), [])<br>    enable_mfa     = optional(bool, false)<br>    policy_arns    = optional(list(string), [])<br>    policy         = optional(string, "")<br><br>    pgp = object({<br>      public_key_base64 = optional(string, "")<br>      keybase_username  = optional(string, "")<br>    })<br><br>    console_password = optional(object({<br>      generate_password       = bool<br>      password_length         = optional(number, 20)<br>      password_reset_required = optional(bool, false)<br>      }), {<br>      generate_password = false<br>    })<br><br>    access_keys = optional(<br>      list(object({<br>        name   = string<br>        status = optional(string, "Active")<br>      })),<br>      []<br>    )<br><br>  }))</pre> | `{}` | no |
 
 ## Outputs
 
