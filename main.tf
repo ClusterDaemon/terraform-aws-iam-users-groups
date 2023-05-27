@@ -1,21 +1,6 @@
 # vim: tabstop=2 shiftwidth=2 expandtab
 terraform {
   required_version = "~>1.4"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~>4.65"
-    }
-    http = {
-      source = "hashicorp/http"
-      version = "3.3.0"
-    }
-    external = {
-      source = "hashicorp/external"
-      version = "2.3.1"
-    }
-  }
 }
 
 module "users" {
@@ -24,13 +9,14 @@ module "users" {
 
   name             = each.key
   path             = each.value.path
-  groups           = [] # Lookup for groups must go here
-  enable_mfa       = each.value.enable_mfa
+  mfa_enabled      = each.value.mfa_enabled
   policy_arns      = each.value.policy_arns
   policy           = each.value.policy
   pgp              = each.value.pgp
   console_password = each.value.console_password
   access_keys      = each.value.access_keys
+
+  groups = [ for group in each.value.groups : contains(keys(var.groups), group) ? module.groups[group].name : group ]
 }
 
 module "groups" {

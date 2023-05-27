@@ -1,31 +1,31 @@
 # vim: tabstop=2 shiftwidth=2 expandtab
-resource "aws_iam_group" "this" {
-  for_each = local.groups
+terraform {
+  required_version = ">= 0.14, < 2"
 
-  name = each.value.name
-  path = each.value.path
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.65"
+    }
+  }
+}
+
+resource "aws_iam_group" "this" {
+  name = var.name
+  path = var.path
 }
 
 resource "aws_iam_group_policy_attachment" "this" {
-  for_each = {
-    for attachment in concat([], [ for group in local.groups : setproduct([group.name], group.policy_arns)]...) :
-    format("%s-%s", attachment[0], attachment[1]) => {
-      group      = attachment[0]
-      policy_arn = attachment[1]
-    }
-  }
+  count = length(var.policy_arns)
 
-  group      = aws_iam_group.this[each.value.group].name
-  policy_arn = each.value.policy_arn
+  group      = aws_iam_group.this.name
+  policy_arn = var.policy_arns[count.index]
 }
 
 resource "aws_iam_group_policy" "this" {
-  for_each = {
-    for name, attributes in local.groups : name => attributes if attributes.policy != ""
-  }
+  count = var.policy != "" ? 1 : 0
+  name  = aws_iam_group.this.name
+  group = aws_iam_group.this.name
 
-  name  = each.value.name
-  group = aws_iam_group.this[each.value.name].name
-
-  policy = each.value.policy
+  policy = var.policy
 }
