@@ -1,0 +1,6 @@
+This is an excellent case study for the simplification that modularization of complex repetitive patterns can bring.
+This this case, a definitive feature was "count nested within for_each", which can only be accomplished via for_each in
+submodules. Also of note is the ability to define local variables within a submodule, which independently looping
+resources cannot do.
+
+This is all in addition to the notes in the opening comment of this issue.
