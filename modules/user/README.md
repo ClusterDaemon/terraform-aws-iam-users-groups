@@ -1,7 +1,12 @@
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.4 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~>4.65 |
+| <a name="requirement_external"></a> [external](#requirement\_external) | 2.3.1 |
+| <a name="requirement_http"></a> [http](#requirement\_http) | 3.3.0 |
 
 ## Providers
 
@@ -26,8 +31,8 @@ No modules.
 | [aws_iam_user_policy.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy) | resource |
 | [aws_iam_user_policy_attachment.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_policy_attachment) | resource |
 | [aws_iam_virtual_mfa_device.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_virtual_mfa_device) | resource |
-| [external_external.encrypt_and_encode_mfa](https://registry.terraform.io/providers/hashicorp/external/latest/docs/data-sources/external) | data source |
-| [http_http.keybase](https://registry.terraform.io/providers/hashicorp/http/latest/docs/data-sources/http) | data source |
+| [external_external.encrypt_and_encode_mfa](https://registry.terraform.io/providers/hashicorp/external/2.3.1/docs/data-sources/external) | data source |
+| [http_http.keybase](https://registry.terraform.io/providers/hashicorp/http/3.3.0/docs/data-sources/http) | data source |
 
 ## Inputs
 
@@ -50,8 +55,10 @@ No modules.
 |------|-------------|
 | <a name="output_access_keys"></a> [access\_keys](#output\_access\_keys) | AWS API access keys, of whih there can be no more than two regardless of state. |
 | <a name="output_arn"></a> [arn](#output\_arn) | Amazon Resource Name for the IAM user. |
+| <a name="output_attached_policy_arns"></a> [attached\_policy\_arns](#output\_attached\_policy\_arns) | IAM policies attached to the user |
 | <a name="output_console_password"></a> [console\_password](#output\_console\_password) | Encrypted password for AWS console and services access. |
 | <a name="output_groups"></a> [groups](#output\_groups) | Groups the IAM user is a member of. |
+| <a name="output_inline_policy"></a> [inline\_policy](#output\_inline\_policy) | JSON IAM policy associated directly with the user. |
 | <a name="output_name"></a> [name](#output\_name) | AWS IAM username |
 | <a name="output_path"></a> [path](#output\_path) | Path in IAM. Does not contribute to uniqueness. Defined for all IAM resources. |
 | <a name="output_unique_id"></a> [unique\_id](#output\_unique\_id) | Unique identifier for the IAM user. |

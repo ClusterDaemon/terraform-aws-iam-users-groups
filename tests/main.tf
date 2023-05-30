@@ -28,18 +28,15 @@ module "users_groups" {
   source = "../"
 
   users = {
-    person = {
-      name       = "Person"
-      enable_mfa = true
 
+    person = {
+      enable_mfa = true
       pgp = {
         public_key_base64 = pgp_key.joe.public_key_base64
       }
-
       console_password = {
         generate_password = true
       }
-
       access_keys = [
         {
           name   = "able"
@@ -50,23 +47,16 @@ module "users_groups" {
           status = "Inactive"
         }
       ]
-      
-
-      groups = ["Administrators"]
+      groups = [ "Administrators" ]
     }
 
     clusterdaemon = {
-      name        = "ClusterDaemon"
       enable_mfa  = true
-
       pgp = {
         keybase_username = "clusterdaemon"
       }
-
       access_keys = [{ name = "thing1" }]
-
       policy_arns = [ "arn:aws:iam::aws:policy/AdministratorAccess" ]
-
       policy = jsonencode(
         {
           "Version": "2012-10-17",
@@ -82,12 +72,10 @@ module "users_groups" {
           ]
         }
       )
-
     }
 
     noaccess = {
-      name = "NoAccess"
-      groups = [ "Nobodies" ]
+      groups = [ "nobodies" ]
       pgp = {
         public_key_base64 = pgp_key.joe.public_key_base64
       }
@@ -102,8 +90,6 @@ module "users_groups" {
     }
 
     nobodies = {
-      name = "Nobodies"
-      
       policy = jsonencode(
         {
           "Version": "2012-10-17",
@@ -119,28 +105,22 @@ module "users_groups" {
       )
         
     }
-
   }
 }
 
-module "only_users" {
-  source = "../"
+module "only_user" {
+  source = "../modules/user"
 
-  users = {
-    OnlyUsers = {
-      pgp = {
-        public_key_base64 = pgp_key.joe.public_key_base64
-      }
-    }
+  name = "OnlyUsers"
+  pgp  = {
+    public_key_base64 = pgp_key.joe.public_key_base64
   }
 }
 
-module "only_groups" {
-  source = "../"
+module "only_group" {
+  source = "../modules/group"
 
-  groups = {
-    OnlyGroups = {}
-  }
+  name = "OnlyGroups"
 }
 
 # Feels like I'm wearing nothing at all!
@@ -148,16 +128,20 @@ module "nothing_at_all" { # Nothing at all!
   source = "../"
 }
 
-output "users_groups" {
-  value = module.users_groups
+output "users" {
+  value = module.users_groups.users
 }
 
-output "only_users" {
-  value = module.only_users
+output "groups" {
+  value = module.users_groups.groups
 }
 
-output "only_groups" {
-  value = module.only_groups
+output "single_user" {
+  value = module.only_user
+}
+
+output "single_group" {
+  value = module.only_group
 }
 
 output "nothing_at_all" {

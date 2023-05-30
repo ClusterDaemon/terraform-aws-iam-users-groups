@@ -82,7 +82,7 @@ resource "aws_iam_virtual_mfa_device" "this" {
 }
 
 data "http" "keybase" {
-  count = var.pgp.public_key_base64 == "" && var.pgp.keybase_username != "" ? 1 : 0
+  count = var.pgp.keybase_username != "" ? 1 : 0
 
   url = format(
     "https://keybase.io/_/api/1.0/user/lookup.json?usernames=%s",
@@ -106,7 +106,7 @@ data "external" "encrypt_and_encode_mfa" {
     (
       var.pgp.public_key_base64 != "" ?
       var.pgp.public_key_base64 :
-      jsondecode(join("", data.http.keybase[*].response_body)).them[0].public_keys.primary.bundle
+      base64encode(jsondecode(data.http.keybase[0].response_body).them[0].public_keys.primary.bundle)
     ),
 
     base64encode(aws_iam_virtual_mfa_device.this[0][each.value])
