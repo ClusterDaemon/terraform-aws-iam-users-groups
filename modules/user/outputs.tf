@@ -28,21 +28,21 @@ output "console_password" {
   description = "Encrypted password for AWS console and services access."
 
   value = {
-    encrypted_password  = join("", aws_iam_user_login_profile.this[*].encrypted_password)
-    pgp_key_fingerprint = join("", aws_iam_user_login_profile.this[*].key_fingerprint)
+    encrypted_password_base64  = join("", aws_iam_user_login_profile.this[*].encrypted_password)
+    pgp_key_fingerprint        = join("", aws_iam_user_login_profile.this[*].key_fingerprint)
   }
 }
 
 output "access_keys" {
-  description = "AWS API access keys, of whih there can be no more than two regardless of state."
+  description = "AWS API access keys, of which there can be no more than two regardless of status."
 
   value = [ for key in var.access_keys : {
-    name                           = key.name
-    id                             = aws_iam_access_key.this[key.name].id
-    status                         = aws_iam_access_key.this[key.name].status
-    encrypted_secret               = aws_iam_access_key.this[key.name].encrypted_secret
-    encrypted_ses_smtp_password_v4 = aws_iam_access_key.this[key.name].encrypted_ses_smtp_password_v4
-    pgp_key_fingerprint            = aws_iam_access_key.this[key.name].key_fingerprint
+    name                                  = key.name
+    id                                    = aws_iam_access_key.this[key.name].id
+    status                                = aws_iam_access_key.this[key.name].status
+    encrypted_secret_base64               = aws_iam_access_key.this[key.name].encrypted_secret
+    encrypted_ses_smtp_password_v4_base64 = aws_iam_access_key.this[key.name].encrypted_ses_smtp_password_v4
+    pgp_key_fingerprint                   = aws_iam_access_key.this[key.name].key_fingerprint
   }]
 }
 

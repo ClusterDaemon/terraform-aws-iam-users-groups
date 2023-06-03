@@ -14,13 +14,75 @@ provided as a keybase username, or a base64 encoded key. A valid PGP key is requ
 - Manage users and groups in addition to handling credentials generation and encryption
   - AWS login (console) passwords
     - Configurable password requirements
-  - AWS API Access Keys
+  - AWS API Access Key management
     - Activate or deactive keys
     - Rotate keys by changing their names
 - Encrypted credential output
 - Secure MFA device management (encrypted MFA QR code/seed output)
 - Sensitive output encryption via user-supplied public PGP keys enables last-mile secret delivery
-- User and group submodules can be used independently
+- User and group submodules can be used independently.
+
+## Credential Decryption
+
+Because credentials are always encypted via PGP, users must use the private key associated with the public key that was
+used to encrypt secrets. Secret data output from this module is always base64 encoded, making it easy to transmit via
+interpreteted data streams. Users should be able to "own" their output object, and the following instructions assume
+that users have acess to their full output object.
+
+### Obtaining a user's output object from Terraform
+
+A user's output object can be filtered from this module's output via the user's name (the map key of the `users` input
+variable). This example assumes that this module is used as a root module, or that its outputs are routed as-is within a
+calling root module. The location and structure of this output object may be different depending on how the root module
+is implemented. It may also be shared via a method other than Terraform's outputs (via an S3 bucket or ASM secret, for
+example).
+
+This module makes no attempt to provide anything other than a module output, which can be filtered like so:
+```
+terraform output -json | jq '.users.value.ClusterDaemon' > ClusterDaemon.json
+```
+
+This output is safe to share with the user directly, as non-encrypted details present in the object are not sensitive.
+
+### Extracting credentials from a user's output object
+
+The resulting object can contain various secret strings, all of which are base64-encoded PGP messages. Any application
+capable of using a private PGP key to decrypt messages will work, though these examples use the `keybase` client
+utility. Credentials are only available via a few paths, all of which are present in these examples:
+
+Obtain a user's AWS password and decode+decrypt (MacOS, Linux):
+```
+jq -r '.console_password.encrypted_password_base64' ClusterDaemon.json | base64 -d | keybase pgp decrypt -o aws_password.secret
+```
+
+Obtain a user's access keys (of which there may be from none to 2), where the file name is the access key ID, and its
+contents are the secret key.
+```
+jq '.access_keys[0].encrypted_secret_base64' ClusterDaemon.json | base64 -d | keybase pgp decrypt -o $(
+  jq '.access_keys[0].id' ClusterDaemon.json
+)
+```
+
+To obtain a second access key (if configured), modify the `jq` filter to `access_keys[1]`.
+
+#### MFA Setup
+
+MFA device registration details are encrypted and encoded, preventing man-in-the-middle MFA registration.
+
+Obtain a user's MFA QR code or seed string:
+```
+jq '.virtual_mfa_device.encrypted_qr_code_png_base64' ClusterDaemon.json | base64 -d | keybase decrypt -o mfa_qr_code.png 
+```
+
+Then use your favorite image viewer to display the QR code present in `mfa_qr_code.png`. Use an MFA application on your
+mobile device to scan the code. After doing so, use two consecutive tokens to register the device with AWS, completing
+MFA setup:
+
+```
+aws iam enable-mfa-device --user-name ClusterDaemon --serial-number $(jq '.virtual_mfa_device.arn' ClusterDaemon.json) \
+  --authentication-code1 "REPLACE THIS WITH CODE FROM MFA APPLICATION AFTER QR CODE SCAN" \
+  --authentication-code2 "REPLACE THIS WITH THE VERY NEXT CODE FROM MFA APPLICATION"
+```
 
 ## Roadmap
 
