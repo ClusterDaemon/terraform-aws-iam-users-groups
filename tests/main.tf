@@ -50,7 +50,7 @@ module "users_groups" {
       groups = [ "Administrators" ]
     }
 
-    clusterdaemon = {
+    ClusterDaemon = {
       enable_mfa  = true
       pgp = {
         keybase_username = "clusterdaemon"
