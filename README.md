@@ -1,5 +1,7 @@
 # Terraform AWS IAM Users and Groups
 
+![image](https://github.com/ClusterDaemon/terraform-aws-iam-users-groups/assets/14807070/c1c8e54a-f924-4e57-896b-69b02e599f10)
+
 A Terraform resource module that manages IAM users and groups for a single AWS account, in addition to secure credential
 generation and management.
 
